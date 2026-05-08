@@ -1,0 +1,130 @@
+-- ESP MIKEYY | NAME + HEALTH + TOGGLE GUI
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+
+local ESPEnabled = true
+local ESPTable = {}
+
+-- GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ESPMIKEYY"
+ScreenGui.Parent = game.CoreGui
+
+local Main = Instance.new("Frame")
+Main.Parent = ScreenGui
+Main.Size = UDim2.new(0,180,0,65)
+Main.Position = UDim2.new(0,20,0,100)
+Main.BackgroundColor3 = Color3.fromRGB(20,20,20)
+Main.Active = true
+Main.Draggable = true
+
+Instance.new("UICorner", Main)
+
+local Title = Instance.new("TextLabel")
+Title.Parent = Main
+Title.Size = UDim2.new(1,0,0,25)
+Title.BackgroundTransparency = 1
+Title.Text = "ESP MIKEYY"
+Title.TextColor3 = Color3.fromRGB(255,255,255)
+Title.Font = Enum.Font.GothamBold
+Title.TextScaled = true
+
+local Toggle = Instance.new("TextButton")
+Toggle.Parent = Main
+Toggle.Size = UDim2.new(0.9,0,0,28)
+Toggle.Position = UDim2.new(0.05,0,0.5,0)
+Toggle.BackgroundColor3 = Color3.fromRGB(35,35,35)
+Toggle.Text = "ESP : ON"
+Toggle.TextColor3 = Color3.fromRGB(0,255,0)
+Toggle.Font = Enum.Font.GothamBold
+Toggle.TextScaled = true
+
+Instance.new("UICorner", Toggle)
+
+-- CREATE ESP
+local function CreateESP(Player)
+    if Player == LocalPlayer then return end
+
+    local function LoadCharacter(Character)
+        local Head = Character:WaitForChild("Head")
+        local Humanoid = Character:WaitForChild("Humanoid")
+
+        -- Highlight
+        local Highlight = Instance.new("Highlight")
+        Highlight.Parent = Character
+        Highlight.Adornee = Character
+        Highlight.FillColor = Color3.fromRGB(255,0,0)
+        Highlight.OutlineColor = Color3.fromRGB(255,255,255)
+        Highlight.FillTransparency = 0.5
+
+        -- Billboard
+        local Billboard = Instance.new("BillboardGui")
+        Billboard.Name = "ESP_HEALTH"
+        Billboard.Parent = Character
+        Billboard.Adornee = Head
+        Billboard.Size = UDim2.new(0,120,0,45)
+        Billboard.AlwaysOnTop = true
+        Billboard.StudsOffset = Vector3.new(0,2,0)
+
+        local Text = Instance.new("TextLabel")
+        Text.Parent = Billboard
+        Text.Size = UDim2.new(1,0,1,0)
+        Text.BackgroundTransparency = 1
+        Text.TextColor3 = Color3.fromRGB(0,255,0)
+        Text.TextStrokeTransparency = 0
+        Text.Font = Enum.Font.GothamBold
+        Text.TextScaled = true
+
+        ESPTable[Player] = {
+            Highlight = Highlight,
+            Billboard = Billboard
+        }
+
+        RunService.RenderStepped:Connect(function()
+            if Humanoid and Humanoid.Health > 0 then
+                Text.Text =
+                    Player.Name ..
+                    "\nHP : " ..
+                    math.floor(Humanoid.Health) ..
+                    " / " ..
+                    math.floor(Humanoid.MaxHealth)
+            end
+        end)
+    end
+
+    if Player.Character then
+        LoadCharacter(Player.Character)
+    endPlayer.CharacterAdded:Connect(LoadCharacter)
+end
+
+-- LOAD ALL PLAYERS
+for _,Player in pairs(Players:GetPlayers()) do
+    CreateESP(Player)
+end
+
+Players.PlayerAdded:Connect(CreateESP)
+
+-- TOGGLE
+Toggle.MouseButton1Click:Connect(function()
+    ESPEnabled = not ESPEnabled
+
+    if ESPEnabled then
+        Toggle.Text = "ESP : ON"
+        Toggle.TextColor3 = Color3.fromRGB(0,255,0)
+    else
+        Toggle.Text = "ESP : OFF"
+        Toggle.TextColor3 = Color3.fromRGB(255,0,0)
+    end
+
+    for _,v in pairs(ESPTable) do
+        if v.Highlight then
+            v.Highlight.Enabled = ESPEnabled
+        end
+
+        if v.Billboard then
+            v.Billboard.Enabled = ESPEnabled
+        end
+    end
+end)
