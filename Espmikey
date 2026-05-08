@@ -1,0 +1,154 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+local Enabled = true
+local Color = Color3.fromRGB(255,0,0)
+
+local Objects = {}
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = game.CoreGui
+
+local Toggle = Instance.new("TextButton")
+Toggle.Parent = ScreenGui
+Toggle.Size = UDim2.new(0,30,0,30)
+Toggle.Position = UDim2.new(0,20,0.5,0)
+Toggle.BackgroundColor3 = Color3.fromRGB(40,40,40)
+Toggle.Text = "ON"
+Toggle.TextColor3 = Color3.new(1,1,1)
+Toggle.TextScaled = true
+Toggle.BorderSizePixel = 0
+Toggle.Active = true
+Toggle.Draggable = true
+
+Toggle.MouseButton1Click:Connect(function()
+
+    Enabled = not Enabled
+    Toggle.Text = Enabled and "ON" or "OFF"
+
+    for _,v in pairs(Objects) do
+        v.Text.Visible = false
+        v.Red.Visible = false
+
+        if v.Highlight then
+            v.Highlight.Enabled = Enabled
+        end
+    end
+end)
+
+local function Add(player)
+
+    if player == LocalPlayer then return end
+
+    local Text = Drawing.new("Text")
+    Text.Visible = false
+    Text.Color = Color3.fromRGB(0,255,0)
+    Text.Size = 16
+    Text.Center = true
+    Text.Outline = true
+
+    local Red = Drawing.new("Line")
+    Red.Visible = false
+    Red.Color = Color3.fromRGB(255,0,0)
+    Red.Thickness = 2
+
+    local function Setup(character)
+
+        local Highlight = Instance.new("Highlight")
+        Highlight.FillTransparency = 1
+        Highlight.OutlineColor = Color
+        Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        Highlight.Enabled = Enabled
+        Highlight.Parent = character
+
+        Objects[player] = {
+            Text = Text,
+            Red = Red,
+            Highlight = Highlight
+        }
+    end
+
+    if player.Character then
+        Setup(player.Character)
+    end
+
+    player.CharacterAdded:Connect(Setup)
+end
+
+local function Remove(player)
+
+    if Objects[player] then
+
+        Objects[player].Text:Remove()
+        Objects[player].Red:Remove()
+
+        if Objects[player].Highlight then
+            Objects[player].Highlight:Destroy()
+        end
+
+        Objects[player] = nil
+    end
+end
+
+for _,v in pairs(Players:GetPlayers()) do
+    Add(v)
+end
+
+Players.PlayerAdded:Connect(Add)
+Players.PlayerRemoving:Connect(Remove)
+
+RunService.RenderStepped:Connect(function()
+
+    for player,v in pairs(Objects) do
+
+        if player.Team == LocalPlayer.Team then
+            v.Text.Visible = false
+            v.Red.Visible = false
+
+            if v.Highlight then
+                v.Highlight.Enabled = false
+            end
+
+            continue
+        end
+
+        local c = player.Character
+
+        if Enabled
+        and c
+        and c:FindFirstChild("Humanoid")
+        and c:FindFirstChild("Head") then
+
+            local h = c.Humanoid
+            local head = c.Head
+
+            local pos, vis = Camera:WorldToViewportPoint(head.Position)
+
+            if vis and h.Health > 0 then
+
+                v.Text.Position = Vector2.new(pos.X, pos.Y - 40)
+                v.Text.Text = "HP: "..math.floor(h.Health)
+                v.Text.Visible = true
+
+                -- RED LASER
+                v.Red.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                v.Red.To = Vector2.new(pos.X, pos.Y)
+                v.Red.Visible = true
+
+                if v.Highlight then
+                    v.Highlight.Enabled = true
+                end
+
+            else
+                v.Text.Visible = false
+                v.Red.Visible = false
+            end
+        else
+            v.Text.Visible = false
+            v.Red.Visible = false
+        end
+    end
+end)
