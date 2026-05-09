@@ -6,149 +6,153 @@ local Camera = workspace.CurrentCamera
 
 local Enabled = true
 local Color = Color3.fromRGB(255,0,0)
+local ICON_ID = "rbxassetid://123758201043549"
 
 local Objects = {}
 
 local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ESP_Gui"
 ScreenGui.Parent = game.CoreGui
+ScreenGui.ResetOnSpawn = false
 
-local Toggle = Instance.new("TextButton")
+local Toggle = Instance.new("ImageButton")
 Toggle.Parent = ScreenGui
-Toggle.Size = UDim2.new(0,30,0,30)
-Toggle.Position = UDim2.new(0,20,0.5,0)
-Toggle.BackgroundColor3 = Color3.fromRGB(40,40,40)
-Toggle.Text = "ON"
-Toggle.TextColor3 = Color3.new(1,1,1)
-Toggle.TextScaled = true
+Toggle.Size = UDim2.new(0, 45, 0, 45) -- Kích thước đã tăng lên để nhìn rõ ảnh
+Toggle.Position = UDim2.new(0, 20, 0.5, 0)
+Toggle.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Toggle.Image = ICON_ID
 Toggle.BorderSizePixel = 0
 Toggle.Active = true
 Toggle.Draggable = true
+Toggle.ScaleType = Enum.ScaleType.Fit -- Giúp ảnh không bị méo khi tăng kích thước
+
+-- Bo góc cho nút (tùy chọn, giúp nút đẹp hơn)
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 8)
+UICorner.Parent = Toggle
 
 Toggle.MouseButton1Click:Connect(function()
-
     Enabled = not Enabled
-    Toggle.Text = Enabled and "ON" or "OFF"
+    
+    if Enabled then
+        Toggle.ImageColor3 = Color3.fromRGB(255, 255, 255)
+        Toggle.BackgroundTransparency = 0
+    else
+        Toggle.ImageColor3 = Color3.fromRGB(120, 120, 120)
+        Toggle.BackgroundTransparency = 0.4
+    end
 
     for _,v in pairs(Objects) do
-        v.Text.Visible = false
+        v.HealthBarBack.Visible = false
+        v.HealthBarMain.Visible = false
         v.Red.Visible = false
-
-        if v.Highlight then
-            v.Highlight.Enabled = Enabled
-        end
+        if v.Highlight then v.Highlight.Enabled = false end
     end
 end)
 
 local function Add(player)
-
     if player == LocalPlayer then return end
 
-    local Text = Drawing.new("Text")
-    Text.Visible = false
-    Text.Color = Color3.fromRGB(0,255,0)
-    Text.Size = 16
-    Text.Center = true
-    Text.Outline = true
+    local HealthBarBack = Drawing.new("Square")
+    HealthBarBack.Visible = false
+    HealthBarBack.Color = Color3.fromRGB(0, 0, 0)
+    HealthBarBack.Filled = true
+    HealthBarBack.ZIndex = 1
+
+    local HealthBarMain = Drawing.new("Square")
+    HealthBarMain.Visible = false
+    HealthBarMain.Filled = true
+    HealthBarMain.ZIndex = 2
 
     local Red = Drawing.new("Line")
     Red.Visible = false
     Red.Color = Color3.fromRGB(255,0,0)
-    Red.Thickness = 2
+    Red.Thickness = 1
 
     local function Setup(character)
+        local Highlight = Instance.new("Highlight")    
+        Highlight.FillTransparency = 1    
+        Highlight.OutlineColor = Color    
+        Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop    
+        Highlight.Enabled = false    
+        Highlight.Parent = character    
 
-        local Highlight = Instance.new("Highlight")
-        Highlight.FillTransparency = 1
-        Highlight.OutlineColor = Color
-        Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-        Highlight.Enabled = Enabled
-        Highlight.Parent = character
-
-        Objects[player] = {
-            Text = Text,
-            Red = Red,
-            Highlight = Highlight
+        Objects[player] = {    
+            HealthBarBack = HealthBarBack,
+            HealthBarMain = HealthBarMain,
+            Red = Red,    
+            Highlight = Highlight    
         }
     end
 
-    if player.Character then
-        Setup(player.Character)
-    end
-
+    if player.Character then Setup(player.Character) end
     player.CharacterAdded:Connect(Setup)
 end
 
 local function Remove(player)
-
     if Objects[player] then
-
-        Objects[player].Text:Remove()
-        Objects[player].Red:Remove()
-
-        if Objects[player].Highlight then
-            Objects[player].Highlight:Destroy()
-        end
-
+        Objects[player].HealthBarBack:Remove()
+        Objects[player].HealthBarMain:Remove()
+        Objects[player].Red:Remove()    
+        if Objects[player].Highlight then Objects[player].Highlight:Destroy() end    
         Objects[player] = nil
     end
 end
 
-for _,v in pairs(Players:GetPlayers()) do
-    Add(v)
-end
-
+for _,v in pairs(Players:GetPlayers()) do Add(v) end
 Players.PlayerAdded:Connect(Add)
 Players.PlayerRemoving:Connect(Remove)
 
 RunService.RenderStepped:Connect(function()
+    for player, v in pairs(Objects) do
+        if player.Team == LocalPlayer.Team then    
+            v.HealthBarBack.Visible = false
+            v.HealthBarMain.Visible = false
+            v.Red.Visible = false    
+            if v.Highlight then v.Highlight.Enabled = false end
+            continue    
+        end    
 
-    for player,v in pairs(Objects) do
-
-        if player.Team == LocalPlayer.Team then
-            v.Text.Visible = false
-            v.Red.Visible = false
-
-            if v.Highlight then
-                v.Highlight.Enabled = false
-            end
-
-            continue
-        end
-
-        local c = player.Character
-
-        if Enabled
-        and c
-        and c:FindFirstChild("Humanoid")
-        and c:FindFirstChild("Head") then
-
-            local h = c.Humanoid
-            local head = c.Head
-
-            local pos, vis = Camera:WorldToViewportPoint(head.Position)
+        local c = player.Character    
+        if Enabled and c and c:FindFirstChild("Humanoid") and c:FindFirstChild("Head") then    
+            local h = c.Humanoid    
+            local head = c.Head    
+            local pos, vis = Camera:WorldToViewportPoint(head.Position)    
 
             if vis and h.Health > 0 then
+                local distance = (Camera.CFrame.Position - head.Position).Magnitude
+                local scale = math.clamp(1 / (distance * 0.02), 0.4, 1.2) 
 
-                v.Text.Position = Vector2.new(pos.X, pos.Y - 40)
-                v.Text.Text = "HP: "..math.floor(h.Health)
-                v.Text.Visible = true
+                local baseWidth = 40 * scale
+                local baseHeight = 5 * scale
+                local healthPercent = h.Health / h.MaxHealth
+                local barColor = (healthPercent <= 0.35) and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 255, 0)
 
-                -- RED LASER
-                v.Red.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-                v.Red.To = Vector2.new(pos.X, pos.Y)
-                v.Red.Visible = true
+                v.HealthBarBack.Size = Vector2.new(baseWidth + 2, baseHeight + 2)
+                v.HealthBarBack.Position = Vector2.new(pos.X - (baseWidth/2) - 1, pos.Y - (50 * scale))
+                v.HealthBarBack.Visible = true
 
-                if v.Highlight then
-                    v.Highlight.Enabled = true
-                end
+                v.HealthBarMain.Size = Vector2.new(baseWidth * healthPercent, baseHeight)
+                v.HealthBarMain.Position = Vector2.new(pos.X - (baseWidth/2), pos.Y - (50 * scale) + 1)
+                v.HealthBarMain.Color = barColor
+                v.HealthBarMain.Visible = true
 
-            else
-                v.Text.Visible = false
-                v.Red.Visible = false
-            end
-        else
-            v.Text.Visible = false
-            v.Red.Visible = false
+                v.Red.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)    
+                v.Red.To = Vector2.new(pos.X, pos.Y)    
+                v.Red.Visible = true    
+
+                if v.Highlight then v.Highlight.Enabled = true end    
+            else    
+                v.HealthBarBack.Visible = false
+                v.HealthBarMain.Visible = false
+                v.Red.Visible = false    
+                if v.Highlight then v.Highlight.Enabled = false end
+            end    
+        else    
+            v.HealthBarBack.Visible = false
+            v.HealthBarMain.Visible = false
+            v.Red.Visible = false    
+            if v.Highlight then v.Highlight.Enabled = false end
         end
     end
 end)
